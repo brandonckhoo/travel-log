@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { MapPin, Globe, Layers, Heart } from "lucide-react";
+import { MapPin, Globe, Layers, Heart, Users } from "lucide-react";
 import Link from "next/link";
 
 // Country → Continent mapping (used to count distinct continents from city data)
@@ -71,17 +71,20 @@ async function getStats() {
       .filter(Boolean)
   ).size;
 
-  const withWife = new Set(
-    cities
-      .filter((c) => c.with_wife && c.country_name)
-      .map((c) => c.country_name as string)
-  ).size;
+  const citiesWithWife = cities.filter(
+    (c) => c.trip_type === "Couple" || c.trip_type === "FamilyCouple"
+  ).length;
+
+  const citiesWithFamily = cities.filter(
+    (c) => c.trip_type === "Family" || c.trip_type === "FamilyCouple"
+  ).length;
 
   return {
     cities: cities.length,
     countries: uniqueCountries.size,
     continents,
-    withWife,
+    citiesWithWife,
+    citiesWithFamily,
     recentCities: recentCities ?? [],
   };
 }
@@ -131,12 +134,20 @@ export default async function DashboardPage() {
       href: "/map",
     },
     {
-      label: "Countries with Wife",
-      value: stats.withWife,
+      label: "Cities with Wife",
+      value: stats.citiesWithWife,
       icon: Heart,
       color: "text-accent-blush",
       bg: "bg-rose-50",
-      href: "/countries",
+      href: "/cities",
+    },
+    {
+      label: "Cities with Family",
+      value: stats.citiesWithFamily,
+      icon: Users,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      href: "/cities",
     },
   ];
 
@@ -148,7 +159,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {statCards.map(({ label, value, icon: Icon, color, bg, href }) => (
           <Link key={label} href={href}>
             <div className="bg-surface rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow">
