@@ -120,6 +120,7 @@ export default function CityModal({
     try {
       const payload = {
         ...form,
+        country_id: form.country_id || null,
         visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
