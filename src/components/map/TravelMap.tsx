@@ -5,13 +5,15 @@ import {
   Geographies,
   Geography,
   Marker,
-  ZoomableGroup,
   Sphere,
   Graticule,
 } from "react-simple-maps";
 import { Tooltip } from "react-tooltip";
 import { useState, useRef, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import type { City, Country } from "@/types";
+
+const SatelliteMap = dynamic(() => import("./SatelliteMap"), { ssr: false, loading: () => <div className="w-full h-full bg-[#1a3a5c] animate-pulse" /> });
 
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
@@ -112,7 +114,6 @@ export default function TravelMap({
   const [rotation, setRotation] = useState<[number, number, number]>([-15, -25, 0]);
   const [globeZoom, setGlobeZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
-  const [mapZoom, setMapZoom] = useState(1);
   const dragRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -207,32 +208,16 @@ export default function TravelMap({
         </div>
       )}
 
-      <ComposableMap
-        projection={viewMode === "globe" ? "geoOrthographic" : "geoNaturalEarth1"}
-        projectionConfig={
-          viewMode === "globe"
-            ? { rotate: rotation, scale: 200 * globeZoom }
-            : { scale: 153, center: [0, 10] }
-        }
-        style={{ width: "100%", height: "100%" }}
-      >
-        {viewMode === "map" && interactive ? (
-          <ZoomableGroup
-            zoom={1}
-            minZoom={0.8}
-            maxZoom={40}
-            onMove={({ zoom }: { zoom: number }) => setMapZoom(zoom)}
-          >
-            <MapContent
-              visitedCodes={visitedCodes}
-              cities={cities}
-              onCityTooltip={setCityTooltip}
-              onCountryHover={setCountryHover}
-              interactive={interactive}
-              markerScale={mapZoom}
-            />
-          </ZoomableGroup>
-        ) : (
+      {viewMode === "map" ? (
+        <div className="absolute inset-0">
+          <SatelliteMap cities={cities} countries={countries} />
+        </div>
+      ) : (
+        <ComposableMap
+          projection="geoOrthographic"
+          projectionConfig={{ rotate: rotation, scale: 200 * globeZoom }}
+          style={{ width: "100%", height: "100%" }}
+        >
           <MapContent
             visitedCodes={visitedCodes}
             cities={cities}
@@ -241,17 +226,15 @@ export default function TravelMap({
             interactive={interactive}
             markerScale={1}
           />
-        )}
-      </ComposableMap>
+        </ComposableMap>
+      )}
 
-      {interactive && (
+      {interactive && viewMode === "globe" && (
         <Tooltip anchorSelect=".map-marker" content={cityTooltip} />
       )}
-      {interactive && (
+      {interactive && viewMode === "globe" && (
         <p className="absolute bottom-3 right-4 text-xs text-blue-300 select-none">
-          {viewMode === "globe"
-            ? "Drag to rotate · Scroll to zoom"
-            : "Scroll to zoom · Drag to pan"}
+          Drag to rotate · Scroll to zoom
         </p>
       )}
     </div>
