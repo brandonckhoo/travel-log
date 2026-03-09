@@ -15,7 +15,7 @@ export async function getCities(filters?: CityFilters): Promise<City[]> {
   let query = supabase
     .from("cities")
     .select(`*, country:countries(id, name, code, region)`)
-    .order("visit_date_start", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (filters?.countryId) query = query.eq("country_id", filters.countryId);
   if (filters?.tripType) query = query.eq("trip_type", filters.tripType);

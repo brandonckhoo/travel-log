@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Sparkles } from "lucide-react";
 import useSWR from "swr";
 import Modal from "@/components/ui/Modal";
 import { createCity, updateCity } from "@/lib/queries/cities";
@@ -42,6 +42,9 @@ export default function CityModal({
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: countries } = useSWR("countries-list", () => getCountries());
 
@@ -52,18 +55,69 @@ export default function CityModal({
         country_id: city.country_id,
         country_name: city.country_name,
         trip_type: city.trip_type,
-        visit_date_start: city.visit_date_start,
+        visit_date_start: city.visit_date_start ?? "",
         visit_date_end: city.visit_date_end ?? "",
         notes: city.notes ?? "",
       });
     } else {
       setForm(EMPTY);
     }
+    setDetectedCountry(null);
     setError(null);
   }, [city, open]);
 
+  // Auto-detect country from city name
+  useEffect(() => {
+    if (!form.name || form.name.length < 2 || city) return;
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      setDetecting(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(form.name)}&format=json&limit=1&addressdetails=1`,
+          { headers: { "User-Agent": "TravelLog/1.0" } }
+        );
+        const data = await res.json();
+        const countryName = data[0]?.address?.country;
+        const countryCode = data[0]?.address?.country_code?.toUpperCase();
+
+        if (countryName && countryCode && countries) {
+          // Try to match by code first, then by name
+          const match =
+            countries.find((c) => c.code === countryCode) ||
+            countries.find((c) =>
+              c.name.toLowerCase().includes(countryName.toLowerCase())
+            );
+
+          if (match && !form.country_id) {
+            setForm((f) => ({
+              ...f,
+              country_id: match.id,
+              country_name: match.name,
+            }));
+            setDetectedCountry(match.name);
+          } else if (!match) {
+            // Country not in DB yet — just show the detected name as a hint
+            setDetectedCountry(countryName);
+          }
+        }
+      } catch {
+        // Silently fail
+      } finally {
+        setDetecting(false);
+      }
+    }, 800);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [form.name, countries, city]);
+
   function handleCountryChange(countryId: string) {
     const country = countries?.find((c) => c.id === countryId);
+    setDetectedCountry(null);
     setForm((f) => ({
       ...f,
       country_id: countryId,
@@ -78,6 +132,7 @@ export default function CityModal({
     try {
       const payload = {
         ...form,
+        visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
         with_wife: form.trip_type === "Couple",
@@ -101,28 +156,45 @@ export default function CityModal({
       open={open}
       onOpenChange={onOpenChange}
       title={city ? "Edit City" : "Add City"}
-      description={city ? undefined : "A photo will be fetched automatically."}
+      description="A photo will be fetched automatically."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* City name */}
         <div>
           <label className="block text-sm font-medium text-ink mb-1.5">
             City name <span className="text-red-500">*</span>
           </label>
-          <input
-            required
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="e.g. Tokyo"
-            className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink placeholder:text-ink-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
-          />
+          <div className="relative">
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Tokyo"
+              className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink placeholder:text-ink-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
+            />
+            {detecting && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-3" />
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Country — optional, auto-detected */}
         <div>
-          <label className="block text-sm font-medium text-ink mb-1.5">
-            Country <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-sm font-medium text-ink">
+              Country
+              <span className="text-ink-3 font-normal ml-1">(optional)</span>
+            </label>
+            {detectedCountry && (
+              <span className="flex items-center gap-1 text-xs text-accent-sage">
+                <Sparkles className="w-3 h-3" />
+                Detected: {detectedCountry}
+              </span>
+            )}
+          </div>
           <select
-            required
             value={form.country_id}
             onChange={(e) => handleCountryChange(e.target.value)}
             className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
@@ -136,6 +208,7 @@ export default function CityModal({
           </select>
         </div>
 
+        {/* Trip type */}
         <div>
           <label className="block text-sm font-medium text-ink mb-1.5">
             Trip type <span className="text-red-500">*</span>
@@ -160,13 +233,14 @@ export default function CityModal({
           )}
         </div>
 
+        {/* Dates — both optional */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-ink mb-1.5">
-              Visit start <span className="text-red-500">*</span>
+              Visit start
+              <span className="text-ink-3 font-normal ml-1">(optional)</span>
             </label>
             <input
-              required
               type="date"
               value={form.visit_date_start}
               onChange={(e) =>
@@ -178,6 +252,7 @@ export default function CityModal({
           <div>
             <label className="block text-sm font-medium text-ink mb-1.5">
               Visit end
+              <span className="text-ink-3 font-normal ml-1">(optional)</span>
             </label>
             <input
               type="date"
@@ -190,6 +265,7 @@ export default function CityModal({
           </div>
         </div>
 
+        {/* Notes */}
         <div>
           <label className="block text-sm font-medium text-ink mb-1.5">
             Notes
