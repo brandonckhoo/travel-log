@@ -32,7 +32,7 @@ export interface City {
   photo_url: string | null;
   with_wife: boolean;
   trip_type: TripType;
-  visit_date_start: string;
+  visit_date_start: string | null;
   visit_date_end: string | null;
   notes: string | null;
   latitude: number | null;

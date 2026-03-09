@@ -113,7 +113,7 @@ export default function CityModal({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [form.name, countries, city]);
+  }, [form.name, form.country_id, countries, city]);
 
   function handleCountryChange(countryId: string) {
     const country = countries?.find((c) => c.id === countryId);
