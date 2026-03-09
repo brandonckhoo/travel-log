@@ -91,16 +91,14 @@ export default function CityModal({
               c.name.toLowerCase().includes(countryName.toLowerCase())
             );
 
-          if (match && !form.country_id) {
+          if (!form.country_name) {
+            const nameToUse = match?.name ?? countryName;
             setForm((f) => ({
               ...f,
-              country_id: match.id,
-              country_name: match.name,
+              country_name: nameToUse,
+              country_id: match?.id ?? "",
             }));
-            setDetectedCountry(match.name);
-          } else if (!match) {
-            // Country not in DB yet — just show the detected name as a hint
-            setDetectedCountry(countryName);
+            setDetectedCountry(nameToUse);
           }
         }
       } catch {
@@ -114,16 +112,6 @@ export default function CityModal({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [form.name, form.country_id, countries, city]);
-
-  function handleCountryChange(countryId: string) {
-    const country = countries?.find((c) => c.id === countryId);
-    setDetectedCountry(null);
-    setForm((f) => ({
-      ...f,
-      country_id: countryId,
-      country_name: country?.name ?? "",
-    }));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -164,48 +152,52 @@ export default function CityModal({
           <label className="block text-sm font-medium text-ink mb-1.5">
             City name <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Tokyo"
-              className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink placeholder:text-ink-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
-            />
-            {detecting && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-ink-3" />
-              </div>
-            )}
-          </div>
+          <input
+            required
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            placeholder="e.g. Tokyo"
+            className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink placeholder:text-ink-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
+          />
         </div>
 
-        {/* Country — optional, auto-detected */}
+        {/* Country — optional text input, auto-detected */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-sm font-medium text-ink">
               Country
               <span className="text-ink-3 font-normal ml-1">(optional)</span>
             </label>
-            {detectedCountry && (
-              <span className="flex items-center gap-1 text-xs text-accent-sage">
-                <Sparkles className="w-3 h-3" />
-                Detected: {detectedCountry}
+            {detecting && (
+              <span className="flex items-center gap-1 text-xs text-ink-3">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Detecting...
               </span>
             )}
           </div>
-          <select
-            value={form.country_id}
-            onChange={(e) => handleCountryChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
-          >
-            <option value="">Select a country</option>
-            {countries?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <input
+            value={form.country_name}
+            onChange={(e) => {
+              setDetectedCountry(null);
+              // Try to match typed name to existing country
+              const match = countries?.find(
+                (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
+              );
+              setForm((f) => ({
+                ...f,
+                country_name: e.target.value,
+                country_id: match?.id ?? "",
+              }));
+            }}
+            placeholder="e.g. Japan"
+            className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink placeholder:text-ink-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
+          />
+          {detectedCountry && (
+            <p className="flex items-center gap-1 text-xs text-accent-sage mt-1">
+              <Sparkles className="w-3 h-3" />
+              Auto-filled from city name
+            </p>
+          )}
         </div>
 
         {/* Trip type */}
