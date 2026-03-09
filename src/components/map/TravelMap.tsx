@@ -124,7 +124,7 @@ export default function TravelMap({
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       setGlobeZoom((z) =>
-        Math.max(0.5, Math.min(6, z * (1 - e.deltaY * 0.0008)))
+        Math.max(0.5, Math.min(20, z * (1 - e.deltaY * 0.0008)))
       );
     };
     el.addEventListener("wheel", handler, { passive: false });
@@ -216,7 +216,7 @@ export default function TravelMap({
         style={{ width: "100%", height: "100%" }}
       >
         {viewMode === "map" && interactive ? (
-          <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={8}>
+          <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={40}>
             <MapContent
               visitedCodes={visitedCodes}
               cities={cities}
