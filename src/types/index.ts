@@ -27,7 +27,7 @@ export interface Country {
 export interface City {
   id: string;
   name: string;
-  country_id: string;
+  country_id: string | null;
   country_name: string;
   photo_url: string | null;
   with_wife: boolean;

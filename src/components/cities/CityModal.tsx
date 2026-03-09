@@ -52,7 +52,7 @@ export default function CityModal({
     if (city) {
       setForm({
         name: city.name,
-        country_id: city.country_id,
+        country_id: city.country_id ?? "",
         country_name: city.country_name,
         trip_type: city.trip_type,
         visit_date_start: city.visit_date_start ?? "",

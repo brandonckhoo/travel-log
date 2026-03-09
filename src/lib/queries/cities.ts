@@ -45,14 +45,15 @@ export async function createCity(
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
       with_wife: values.trip_type === "Couple",
+      country_id: values.country_id || null,
     })
     .select(`*, country:countries(id, name, code, region)`)
     .single();
 
   if (error) throw error;
 
-  // If Couple trip, mark country as with_wife
-  if (values.trip_type === "Couple") {
+  // If Couple trip and country is set, mark country as with_wife
+  if (values.trip_type === "Couple" && values.country_id) {
     await supabase
       .from("countries")
       .update({ with_wife: true, updated_at: new Date().toISOString() })
@@ -93,11 +94,11 @@ export async function updateCity(
   return data as City;
 }
 
-export async function deleteCity(id: string, countryId: string): Promise<void> {
+export async function deleteCity(id: string, countryId: string | null): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("cities").delete().eq("id", id);
   if (error) throw error;
-  await recalcCountryWithWife(countryId);
+  if (countryId) await recalcCountryWithWife(countryId);
 }
 
 async function recalcCountryWithWife(countryId: string): Promise<void> {
