@@ -90,6 +90,7 @@ const MARKER_COLORS: Record<string, string> = {
   Business: "#d97706",
   Family: "#00a07a",
   Couple: "#f43f5e",
+  FamilyCouple: "#9333ea",
 };
 
 type ViewMode = "globe" | "map";

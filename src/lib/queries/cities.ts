@@ -44,7 +44,7 @@ export async function createCity(
       photo_url,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
-      with_wife: values.trip_type === "Couple",
+      with_wife: values.trip_type === "Couple" || values.trip_type === "FamilyCouple",
       country_id: values.country_id || null,
     })
     .select(`*, country:countries(id, name, code, region)`)
@@ -52,8 +52,8 @@ export async function createCity(
 
   if (error) throw error;
 
-  // If Couple trip and country is set, mark country as with_wife
-  if (values.trip_type === "Couple" && values.country_id) {
+  // If Couple/FamilyCouple trip and country is set, mark country as with_wife
+  if ((values.trip_type === "Couple" || values.trip_type === "FamilyCouple") && values.country_id) {
     await supabase
       .from("countries")
       .update({ with_wife: true, updated_at: new Date().toISOString() })
@@ -73,7 +73,7 @@ export async function updateCity(
     ...values,
     updated_at: new Date().toISOString(),
     ...(values.trip_type !== undefined && {
-      with_wife: values.trip_type === "Couple",
+      with_wife: values.trip_type === "Couple" || values.trip_type === "FamilyCouple",
     }),
   };
 
@@ -107,7 +107,7 @@ async function recalcCountryWithWife(countryId: string): Promise<void> {
     .from("cities")
     .select("id")
     .eq("country_id", countryId)
-    .eq("trip_type", "Couple")
+    .in("trip_type", ["Couple", "FamilyCouple"])
     .limit(1);
 
   const hasCoupleTripLeft = (data ?? []).length > 0;

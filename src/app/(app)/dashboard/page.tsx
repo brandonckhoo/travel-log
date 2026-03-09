@@ -91,6 +91,7 @@ const TRIP_TYPE_COLORS: Record<string, string> = {
   Business: "bg-amber-100 text-amber-700",
   Family: "bg-emerald-100 text-emerald-700",
   Couple: "bg-rose-100 text-rose-600",
+  FamilyCouple: "bg-purple-100 text-purple-700",
 };
 
 const TRIP_TYPE_LABELS: Record<string, string> = {
@@ -98,6 +99,7 @@ const TRIP_TYPE_LABELS: Record<string, string> = {
   Business: "Business",
   Family: "Family",
   Couple: "With Wife",
+  FamilyCouple: "Family + Wife",
 };
 
 export default async function DashboardPage() {

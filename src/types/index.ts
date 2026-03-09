@@ -1,4 +1,4 @@
-export type TripType = "Solo" | "Business" | "Family" | "Couple";
+export type TripType = "Solo" | "Business" | "Family" | "Couple" | "FamilyCouple";
 
 export type Region =
   | "All"
@@ -55,6 +55,7 @@ export const TRIP_TYPE_COLORS: Record<TripType, { bg: string; text: string; labe
   Business: { bg: "bg-amber-100", text: "text-amber-700", label: "Business" },
   Family: { bg: "bg-emerald-100", text: "text-emerald-700", label: "Family" },
   Couple: { bg: "bg-rose-100", text: "text-rose-600", label: "With Wife" },
+  FamilyCouple: { bg: "bg-purple-100", text: "text-purple-700", label: "Family + Wife" },
 };
 
 export const REGIONS: Region[] = [

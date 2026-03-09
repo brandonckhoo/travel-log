@@ -17,6 +17,7 @@ const FILTERS: { label: string; value: TripType | "All" }[] = [
   { label: "Business", value: "Business" },
   { label: "Family", value: "Family" },
   { label: "With Wife", value: "Couple" },
+  { label: "Family + Wife", value: "FamilyCouple" },
 ];
 
 export default function CitiesPage() {

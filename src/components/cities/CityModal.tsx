@@ -15,12 +15,13 @@ interface CityModalProps {
   onSaved: () => void;
 }
 
-const TRIP_TYPES: TripType[] = ["Solo", "Business", "Family", "Couple"];
+const TRIP_TYPES: TripType[] = ["Solo", "Business", "Family", "Couple", "FamilyCouple"];
 const TRIP_TYPE_LABELS: Record<TripType, string> = {
   Solo: "Solo",
   Business: "Business",
   Family: "Family",
-  Couple: "With Wife (Couple)",
+  Couple: "With Wife",
+  FamilyCouple: "Family + Wife",
 };
 
 const EMPTY = {
@@ -124,7 +125,7 @@ export default function CityModal({
         visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
-        with_wife: form.trip_type === "Couple",
+        with_wife: form.trip_type === "Couple" || form.trip_type === "FamilyCouple",
       };
       if (city) {
         await updateCity(city.id, payload);
@@ -219,7 +220,7 @@ export default function CityModal({
               </option>
             ))}
           </select>
-          {form.trip_type === "Couple" && (
+          {(form.trip_type === "Couple" || form.trip_type === "FamilyCouple") && (
             <p className="text-xs text-rose-500 mt-1">
               This will also mark the country as visited with wife.
             </p>
