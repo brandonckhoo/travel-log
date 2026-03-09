@@ -6,6 +6,8 @@ import {
   Geography,
   Marker,
   ZoomableGroup,
+  Sphere,
+  Graticule,
 } from "react-simple-maps";
 import { Tooltip } from "react-tooltip";
 import { useState } from "react";
@@ -14,8 +16,6 @@ import type { City, Country } from "@/types";
 const GEO_URL =
   "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
-// ISO 3166-1 numeric → alpha-2 mapping (subset of visited countries)
-// react-simple-maps uses numeric codes in TopoJSON
 const NUMERIC_TO_ALPHA: Record<string, string> = {
   "392": "JP", "250": "FR", "840": "US", "826": "GB",
   "036": "AU", "702": "SG", "764": "TH", "380": "IT",
@@ -54,13 +54,14 @@ export default function TravelMap({
   const visitedCodes = new Set(countries.map((c) => c.code));
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative bg-[#dbeafe]" style={{ minHeight: 480 }}>
       <ComposableMap
-        projectionConfig={{ scale: 147 }}
+        projection="geoNaturalEarth1"
+        projectionConfig={{ scale: 153, center: [0, 10] }}
         style={{ width: "100%", height: "100%" }}
       >
         {interactive ? (
-          <ZoomableGroup zoom={1}>
+          <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={8}>
             <MapContent
               visitedCodes={visitedCodes}
               cities={cities}
@@ -80,6 +81,11 @@ export default function TravelMap({
       {interactive && (
         <Tooltip anchorSelect=".map-marker" content={tooltip} />
       )}
+      {interactive && (
+        <p className="absolute bottom-3 right-4 text-xs text-blue-300 select-none">
+          Scroll to zoom · Drag to pan
+        </p>
+      )}
     </div>
   );
 }
@@ -97,6 +103,10 @@ function MapContent({
 }) {
   return (
     <>
+      {/* Ocean background */}
+      <Sphere id="ocean" fill="#bfdbfe" stroke="#93c5fd" strokeWidth={0.5} />
+      {/* Lat/lng grid lines */}
+      <Graticule stroke="#93c5fd" strokeWidth={0.3} />
       <Geographies geography={GEO_URL}>
         {({ geographies }) =>
           geographies.map((geo) => {
@@ -108,12 +118,16 @@ function MapContent({
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
-                fill={isVisited ? "#e03d60" : "#E5E4E1"}
+                fill={isVisited ? "#e03d60" : "#e8e6e2"}
                 stroke="#ffffff"
-                strokeWidth={0.5}
+                strokeWidth={0.4}
                 style={{
                   default: { outline: "none" },
-                  hover: { outline: "none", fill: isVisited ? "#c42d50" : "#d0cfcc" },
+                  hover: {
+                    outline: "none",
+                    fill: isVisited ? "#c42d50" : "#d4d1cc",
+                    cursor: "default",
+                  },
                   pressed: { outline: "none" },
                 }}
               />
@@ -130,7 +144,7 @@ function MapContent({
               coordinates={[city.longitude!, city.latitude!]}
               className="map-marker"
               onMouseEnter={() =>
-                onTooltip(`${city.name}, ${city.country_name}`)
+                onTooltip(`${city.name}${city.country_name ? `, ${city.country_name}` : ""}`)
               }
             >
               <circle
