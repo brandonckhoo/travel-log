@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import { createCity, updateCity } from "@/lib/queries/cities";
 import { getCountries } from "@/lib/queries/countries";
 import type { City, TripType } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface CityModalProps {
   open: boolean;
@@ -15,20 +16,32 @@ interface CityModalProps {
   onSaved: () => void;
 }
 
-const TRIP_TYPES: TripType[] = ["Solo", "Business", "Family", "Couple", "FamilyCouple"];
-const TRIP_TYPE_LABELS: Record<TripType, string> = {
-  Solo: "Solo",
-  Business: "Business",
-  Family: "Family",
-  Couple: "With Wife",
-  FamilyCouple: "Family + Wife",
-};
+type BaseType = "Solo" | "Business" | "Family";
+
+const BASE_TYPES: BaseType[] = ["Solo", "Business", "Family"];
+
+function deriveTripType(base: BaseType, withWife: boolean): TripType {
+  if (base === "Family" && withWife) return "FamilyCouple";
+  if (withWife) return "Couple";
+  return base;
+}
+
+function splitTripType(tripType: TripType): { base: BaseType; withWife: boolean } {
+  switch (tripType) {
+    case "Couple":       return { base: "Solo",     withWife: true };
+    case "FamilyCouple": return { base: "Family",   withWife: true };
+    case "Family":       return { base: "Family",   withWife: false };
+    case "Business":     return { base: "Business", withWife: false };
+    default:             return { base: "Solo",     withWife: false };
+  }
+}
 
 const EMPTY = {
   name: "",
   country_id: "",
   country_name: "",
-  trip_type: "Solo" as TripType,
+  base_type: "Solo" as BaseType,
+  with_wife: false,
   visit_date_start: "",
   visit_date_end: "",
   notes: "",
@@ -51,11 +64,13 @@ export default function CityModal({
 
   useEffect(() => {
     if (city) {
+      const { base, withWife } = splitTripType(city.trip_type);
       setForm({
         name: city.name,
         country_id: city.country_id ?? "",
         country_name: city.country_name,
-        trip_type: city.trip_type,
+        base_type: base,
+        with_wife: withWife,
         visit_date_start: city.visit_date_start ?? "",
         visit_date_end: city.visit_date_end ?? "",
         notes: city.notes ?? "",
@@ -85,7 +100,6 @@ export default function CityModal({
         const countryCode = data[0]?.address?.country_code?.toUpperCase();
 
         if (countryName && countryCode && countries) {
-          // Try to match by code first, then by name
           const match =
             countries.find((c) => c.code === countryCode) ||
             countries.find((c) =>
@@ -119,13 +133,16 @@ export default function CityModal({
     setLoading(true);
     setError(null);
     try {
+      const trip_type = deriveTripType(form.base_type, form.with_wife);
       const payload = {
-        ...form,
+        name: form.name,
         country_id: form.country_id || null,
+        country_name: form.country_name,
+        trip_type,
         visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
-        with_wife: form.trip_type === "Couple" || form.trip_type === "FamilyCouple",
+        with_wife: form.with_wife,
       };
       if (city) {
         await updateCity(city.id, payload);
@@ -163,7 +180,7 @@ export default function CityModal({
           />
         </div>
 
-        {/* Country — optional text input, auto-detected */}
+        {/* Country */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="block text-sm font-medium text-ink">
@@ -181,7 +198,6 @@ export default function CityModal({
             value={form.country_name}
             onChange={(e) => {
               setDetectedCountry(null);
-              // Try to match typed name to existing country
               const match = countries?.find(
                 (c) => c.name.toLowerCase() === e.target.value.toLowerCase()
               );
@@ -202,32 +218,54 @@ export default function CityModal({
           )}
         </div>
 
-        {/* Trip type */}
+        {/* Trip type — pill buttons + with wife checkbox */}
         <div>
-          <label className="block text-sm font-medium text-ink mb-1.5">
+          <label className="block text-sm font-medium text-ink mb-2">
             Trip type <span className="text-red-500">*</span>
           </label>
-          <select
-            value={form.trip_type}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, trip_type: e.target.value as TripType }))
-            }
-            className="w-full px-3 py-2 rounded-xl border border-border bg-bg text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent-blush/30 focus:border-accent-blush transition-all"
-          >
-            {TRIP_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TRIP_TYPE_LABELS[t]}
-              </option>
+          <div className="flex gap-2 mb-3">
+            {BASE_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, base_type: type }))}
+                className={cn(
+                  "flex-1 py-2 rounded-xl text-sm font-medium border transition-all",
+                  form.base_type === type
+                    ? "bg-ink text-white border-ink"
+                    : "bg-bg text-ink-2 border-border hover:border-ink-2 hover:text-ink"
+                )}
+              >
+                {type}
+              </button>
             ))}
-          </select>
-          {(form.trip_type === "Couple" || form.trip_type === "FamilyCouple") && (
-            <p className="text-xs text-rose-500 mt-1">
-              This will also mark the country as visited with wife.
-            </p>
-          )}
+          </div>
+          <label className="flex items-center gap-2.5 cursor-pointer select-none group">
+            <div
+              onClick={() => setForm((f) => ({ ...f, with_wife: !f.with_wife }))}
+              className={cn(
+                "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer",
+                form.with_wife
+                  ? "bg-accent-blush border-accent-blush"
+                  : "bg-bg border-border group-hover:border-accent-blush/60"
+              )}
+            >
+              {form.with_wife && (
+                <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+            <span className="text-sm text-ink">With Wife</span>
+            {form.with_wife && (
+              <span className="text-xs text-rose-500">
+                · marks country as visited with wife
+              </span>
+            )}
+          </label>
         </div>
 
-        {/* Dates — both optional */}
+        {/* Dates */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-ink mb-1.5">
@@ -261,9 +299,7 @@ export default function CityModal({
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-ink mb-1.5">
-            Notes
-          </label>
+          <label className="block text-sm font-medium text-ink mb-1.5">Notes</label>
           <textarea
             rows={2}
             value={form.notes}
