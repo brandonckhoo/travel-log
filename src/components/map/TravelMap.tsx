@@ -14,7 +14,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { City, Country } from "@/types";
 
 const GEO_URL =
-  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+  "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json";
 
 const NUMERIC_TO_ALPHA: Record<string, string> = {
   "392": "JP", "250": "FR", "840": "US", "826": "GB",
@@ -112,6 +112,7 @@ export default function TravelMap({
   const [rotation, setRotation] = useState<[number, number, number]>([-15, -25, 0]);
   const [globeZoom, setGlobeZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [mapZoom, setMapZoom] = useState(1);
   const dragRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -216,13 +217,19 @@ export default function TravelMap({
         style={{ width: "100%", height: "100%" }}
       >
         {viewMode === "map" && interactive ? (
-          <ZoomableGroup zoom={1} minZoom={0.8} maxZoom={40}>
+          <ZoomableGroup
+            zoom={1}
+            minZoom={0.8}
+            maxZoom={40}
+            onMove={({ zoom }: { zoom: number }) => setMapZoom(zoom)}
+          >
             <MapContent
               visitedCodes={visitedCodes}
               cities={cities}
               onCityTooltip={setCityTooltip}
               onCountryHover={setCountryHover}
               interactive={interactive}
+              markerScale={mapZoom}
             />
           </ZoomableGroup>
         ) : (
@@ -232,6 +239,7 @@ export default function TravelMap({
             onCityTooltip={setCityTooltip}
             onCountryHover={setCountryHover}
             interactive={interactive}
+            markerScale={1}
           />
         )}
       </ComposableMap>
@@ -256,12 +264,14 @@ function MapContent({
   onCityTooltip,
   onCountryHover,
   interactive,
+  markerScale,
 }: {
   visitedCodes: Set<string>;
   cities: City[];
   onCityTooltip: (v: string) => void;
   onCountryHover: (v: string) => void;
   interactive: boolean;
+  markerScale: number;
 }) {
   return (
     <>
@@ -313,10 +323,10 @@ function MapContent({
               }
             >
               <circle
-                r={4}
+                r={4 / markerScale}
                 fill={MARKER_COLORS[city.trip_type] ?? "#9c9b99"}
                 stroke="#ffffff"
-                strokeWidth={1.5}
+                strokeWidth={1.5 / markerScale}
                 className="cursor-pointer"
               />
             </Marker>
