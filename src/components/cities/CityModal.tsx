@@ -16,23 +16,24 @@ interface CityModalProps {
   onSaved: () => void;
 }
 
-type BaseType = "Solo" | "Business" | "Family";
+type TripTag = "Solo" | "Business" | "Family" | "With Wife";
+const TRIP_TAGS: TripTag[] = ["Solo", "Business", "Family", "With Wife"];
 
-const BASE_TYPES: BaseType[] = ["Solo", "Business", "Family"];
-
-function deriveTripType(base: BaseType, withWife: boolean): TripType {
-  if (base === "Family" && withWife) return "FamilyCouple";
-  if (withWife) return "Couple";
-  return base;
+function deriveTripType(tags: Set<TripTag>): TripType {
+  const wife = tags.has("With Wife");
+  if (tags.has("Family")) return wife ? "FamilyCouple" : "Family";
+  if (tags.has("Business")) return "Business";
+  if (wife) return "Couple";
+  return "Solo";
 }
 
-function splitTripType(tripType: TripType): { base: BaseType; withWife: boolean } {
+function tagsFromTripType(tripType: TripType): Set<TripTag> {
   switch (tripType) {
-    case "Couple":       return { base: "Solo",     withWife: true };
-    case "FamilyCouple": return { base: "Family",   withWife: true };
-    case "Family":       return { base: "Family",   withWife: false };
-    case "Business":     return { base: "Business", withWife: false };
-    default:             return { base: "Solo",     withWife: false };
+    case "FamilyCouple": return new Set<TripTag>(["Family", "With Wife"]);
+    case "Family":       return new Set<TripTag>(["Family"]);
+    case "Couple":       return new Set<TripTag>(["With Wife"]);
+    case "Business":     return new Set<TripTag>(["Business"]);
+    default:             return new Set<TripTag>(["Solo"]);
   }
 }
 
@@ -40,8 +41,7 @@ const EMPTY = {
   name: "",
   country_id: "",
   country_name: "",
-  base_type: "Solo" as BaseType,
-  with_wife: false,
+  tags: new Set<TripTag>(),
   visit_date_start: "",
   visit_date_end: "",
   notes: "",
@@ -64,13 +64,11 @@ export default function CityModal({
 
   useEffect(() => {
     if (city) {
-      const { base, withWife } = splitTripType(city.trip_type);
       setForm({
         name: city.name,
         country_id: city.country_id ?? "",
         country_name: city.country_name,
-        base_type: base,
-        with_wife: withWife,
+        tags: tagsFromTripType(city.trip_type),
         visit_date_start: city.visit_date_start ?? "",
         visit_date_end: city.visit_date_end ?? "",
         notes: city.notes ?? "",
@@ -133,7 +131,7 @@ export default function CityModal({
     setLoading(true);
     setError(null);
     try {
-      const trip_type = deriveTripType(form.base_type, form.with_wife);
+      const trip_type = deriveTripType(form.tags);
       const payload = {
         name: form.name,
         country_id: form.country_id || null,
@@ -142,7 +140,7 @@ export default function CityModal({
         visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
-        with_wife: form.with_wife,
+        with_wife: form.tags.has("With Wife"),
       };
       if (city) {
         await updateCity(city.id, payload);
@@ -218,51 +216,45 @@ export default function CityModal({
           )}
         </div>
 
-        {/* Trip type — pill buttons + with wife checkbox */}
+        {/* Trip type — multi-select toggle pills */}
         <div>
           <label className="block text-sm font-medium text-ink mb-2">
-            Trip type <span className="text-red-500">*</span>
+            Trip type
           </label>
-          <div className="flex gap-2 mb-3">
-            {BASE_TYPES.map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, base_type: type }))}
-                className={cn(
-                  "flex-1 py-2 rounded-xl text-sm font-medium border transition-all",
-                  form.base_type === type
-                    ? "bg-ink text-white border-ink"
-                    : "bg-bg text-ink-2 border-border hover:border-ink-2 hover:text-ink"
-                )}
-              >
-                {type}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2">
+            {TRIP_TAGS.map((tag) => {
+              const active = form.tags.has(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => {
+                      const next = new Set(f.tags);
+                      if (next.has(tag)) next.delete(tag);
+                      else next.add(tag);
+                      return { ...f, tags: next };
+                    })
+                  }
+                  className={cn(
+                    "px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
+                    active
+                      ? tag === "With Wife"
+                        ? "bg-accent-blush text-white border-accent-blush"
+                        : "bg-ink text-white border-ink"
+                      : "bg-bg text-ink-2 border-border hover:border-ink-2 hover:text-ink"
+                  )}
+                >
+                  {tag}
+                </button>
+              );
+            })}
           </div>
-          <label className="flex items-center gap-2.5 cursor-pointer select-none group">
-            <div
-              onClick={() => setForm((f) => ({ ...f, with_wife: !f.with_wife }))}
-              className={cn(
-                "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 cursor-pointer",
-                form.with_wife
-                  ? "bg-accent-blush border-accent-blush"
-                  : "bg-bg border-border group-hover:border-accent-blush/60"
-              )}
-            >
-              {form.with_wife && (
-                <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </div>
-            <span className="text-sm text-ink">With Wife</span>
-            {form.with_wife && (
-              <span className="text-xs text-rose-500">
-                · marks country as visited with wife
-              </span>
-            )}
-          </label>
+          {form.tags.has("With Wife") && (
+            <p className="text-xs text-rose-500 mt-2">
+              Marks this country as visited with wife.
+            </p>
+          )}
         </div>
 
         {/* Dates */}
