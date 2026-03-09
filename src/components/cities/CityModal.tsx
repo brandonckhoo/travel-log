@@ -19,21 +19,21 @@ interface CityModalProps {
 type TripTag = "Solo" | "Business" | "Family" | "With Wife";
 const TRIP_TAGS: TripTag[] = ["Solo", "Business", "Family", "With Wife"];
 
-function deriveTripType(tags: Set<TripTag>): TripType {
-  const wife = tags.has("With Wife");
-  if (tags.has("Family")) return wife ? "FamilyCouple" : "Family";
-  if (tags.has("Business")) return "Business";
+function deriveTripType(tags: TripTag[]): TripType {
+  const wife = tags.includes("With Wife");
+  if (tags.includes("Family")) return wife ? "FamilyCouple" : "Family";
+  if (tags.includes("Business")) return "Business";
   if (wife) return "Couple";
   return "Solo";
 }
 
-function tagsFromTripType(tripType: TripType): Set<TripTag> {
+function tagsFromTripType(tripType: TripType): TripTag[] {
   switch (tripType) {
-    case "FamilyCouple": return new Set<TripTag>(["Family", "With Wife"]);
-    case "Family":       return new Set<TripTag>(["Family"]);
-    case "Couple":       return new Set<TripTag>(["With Wife"]);
-    case "Business":     return new Set<TripTag>(["Business"]);
-    default:             return new Set<TripTag>(["Solo"]);
+    case "FamilyCouple": return ["Family", "With Wife"];
+    case "Family":       return ["Family"];
+    case "Couple":       return ["With Wife"];
+    case "Business":     return ["Business"];
+    default:             return ["Solo"];
   }
 }
 
@@ -41,7 +41,7 @@ const EMPTY = {
   name: "",
   country_id: "",
   country_name: "",
-  tags: new Set<TripTag>(),
+  tags: [] as TripTag[],
   visit_date_start: "",
   visit_date_end: "",
   notes: "",
@@ -140,7 +140,7 @@ export default function CityModal({
         visit_date_start: form.visit_date_start || null,
         visit_date_end: form.visit_date_end || null,
         notes: form.notes || null,
-        with_wife: form.tags.has("With Wife"),
+        with_wife: form.tags.includes("With Wife"),
       };
       if (city) {
         await updateCity(city.id, payload);
@@ -223,16 +223,16 @@ export default function CityModal({
           </label>
           <div className="flex flex-wrap gap-2">
             {TRIP_TAGS.map((tag) => {
-              const active = form.tags.has(tag);
+              const active = form.tags.includes(tag);
               return (
                 <button
                   key={tag}
                   type="button"
                   onClick={() =>
                     setForm((f) => {
-                      const next = new Set(f.tags);
-                      if (next.has(tag)) next.delete(tag);
-                      else next.add(tag);
+                      const next = f.tags.includes(tag)
+                        ? f.tags.filter((t) => t !== tag)
+                        : [...f.tags, tag];
                       return { ...f, tags: next };
                     })
                   }
@@ -250,7 +250,7 @@ export default function CityModal({
               );
             })}
           </div>
-          {form.tags.has("With Wife") && (
+          {form.tags.includes("With Wife") && (
             <p className="text-xs text-rose-500 mt-2">
               Marks this country as visited with wife.
             </p>
